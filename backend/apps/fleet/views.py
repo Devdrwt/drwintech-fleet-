@@ -1,5 +1,7 @@
 from rest_framework import viewsets
 
+from apps.accounts.scoping import ClientScopedMixin
+
 from .models import GpsUnit, SimCard, SimRecharge, Vehicle
 from .serializers import (
     GpsUnitSerializer,
@@ -10,13 +12,15 @@ from .serializers import (
 from .services import deprovision_unit_on_traccar, provision_unit_on_traccar
 
 
-class VehicleViewSet(viewsets.ModelViewSet):
-    queryset = Vehicle.objects.select_related("client").all()
+class VehicleViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "client_id"
+    queryset = Vehicle.objects.select_related("client").order_by("-created_at")
     serializer_class = VehicleSerializer
 
 
-class GpsUnitViewSet(viewsets.ModelViewSet):
-    queryset = GpsUnit.objects.select_related("client", "vehicle").all()
+class GpsUnitViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "client_id"
+    queryset = GpsUnit.objects.select_related("client", "vehicle").order_by("-created_at")
     serializer_class = GpsUnitSerializer
 
     def perform_create(self, serializer):
@@ -30,12 +34,14 @@ class GpsUnitViewSet(viewsets.ModelViewSet):
         instance.delete()
 
 
-class SimCardViewSet(viewsets.ModelViewSet):
+class SimCardViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "unit__client_id"
     queryset = SimCard.objects.select_related("unit").all()
     serializer_class = SimCardSerializer
 
 
-class SimRechargeViewSet(viewsets.ModelViewSet):
+class SimRechargeViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "sim_card__unit__client_id"
     queryset = SimRecharge.objects.select_related("sim_card").all()
     serializer_class = SimRechargeSerializer
 

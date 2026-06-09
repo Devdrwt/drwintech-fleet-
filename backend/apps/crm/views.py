@@ -2,11 +2,15 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
+from apps.accounts.scoping import ClientScopedMixin
+
 from .models import Client
 from .serializers import ClientSerializer
 
 
-class ClientViewSet(viewsets.ModelViewSet):
+class ClientViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    # Un user client ne voit que sa propre fiche (filtre sur la PK).
+    client_filter = "pk"
     queryset = Client.objects.all().order_by("-created_at")
     serializer_class = ClientSerializer
 

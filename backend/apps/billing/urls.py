@@ -1,6 +1,8 @@
 from rest_framework import serializers, viewsets
 from rest_framework.routers import DefaultRouter
 
+from apps.accounts.scoping import ClientScopedMixin
+
 from .models import Charge, Invoice, Subscription, Transaction
 
 
@@ -30,25 +32,32 @@ class ChargeSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_by"]
 
 
-class SubscriptionViewSet(viewsets.ModelViewSet):
+class SubscriptionViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "client_id"
     queryset = Subscription.objects.all()
     serializer_class = SubscriptionSerializer
 
 
-class InvoiceViewSet(viewsets.ModelViewSet):
+class InvoiceViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "client_id"
     queryset = Invoice.objects.all()
     serializer_class = InvoiceSerializer
 
 
-class TransactionViewSet(viewsets.ModelViewSet):
+class TransactionViewSet(ClientScopedMixin, viewsets.ModelViewSet):
+    client_filter = "client_id"
     queryset = Transaction.objects.select_related("client").all()
     serializer_class = TransactionSerializer
-    # TODO Phase 3 : initier le paiement auprès de l'agrégateur + webhook.
 
 
 class ChargeViewSet(viewsets.ModelViewSet):
-    queryset = Charge.objects.all()
+    # Dépenses internes : réservées au back-office, jamais visibles d'un client.
     serializer_class = ChargeSerializer
+
+    def get_queryset(self):
+        if getattr(self.request.user, "client_id", None):
+            return Charge.objects.none()
+        return Charge.objects.all()
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

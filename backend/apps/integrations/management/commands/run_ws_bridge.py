@@ -46,6 +46,7 @@ class Command(BaseCommand):
             try:
                 cookie = await self._login()
                 device_map = await self._load_device_map()
+                self._client_map = await self._load_client_map()
                 ws_url = settings.TRACCAR_WS_URL
                 self.stdout.write(self.style.SUCCESS(f"Connexion WS Traccar : {ws_url}"))
                 # ping_interval=None : Traccar ne répond pas aux pings WS standard,
@@ -88,6 +89,16 @@ class Command(BaseCommand):
             for u in GpsUnit.objects.exclude(traccar_device_id__isnull=True)
         }
 
+    @sync_to_async
+    def _load_client_map(self) -> dict:
+        """Mapping {imei: client_id} pour le cloisonnement de la diffusion."""
+        from apps.fleet.models import GpsUnit
+
+        return {
+            u.imei: u.client_id
+            for u in GpsUnit.objects.exclude(client_id__isnull=True)
+        }
+
     async def _handle_message(self, raw, device_map, channel_layer):
         try:
             data = json.loads(raw)
@@ -104,20 +115,24 @@ class Command(BaseCommand):
                 if imei is None:
                     continue
             await self._persist_position(imei, pos)
+            client_id = self._client_map.get(imei)
+            payload = {
+                "device_imei": imei,
+                "latitude": pos.get("latitude"),
+                "longitude": pos.get("longitude"),
+                "speed": pos.get("speed", 0),
+                "course": pos.get("course", 0),
+                "fixTime": pos.get("fixTime"),
+            }
+            # Diffusion : groupe global (back-office) + groupe du client propriétaire
             await channel_layer.group_send(
-                GROUP,
-                {
-                    "type": "position_update",
-                    "data": {
-                        "device_imei": imei,
-                        "latitude": pos.get("latitude"),
-                        "longitude": pos.get("longitude"),
-                        "speed": pos.get("speed", 0),
-                        "course": pos.get("course", 0),
-                        "fixTime": pos.get("fixTime"),
-                    },
-                },
+                GROUP, {"type": "position_update", "data": payload}
             )
+            if client_id:
+                await channel_layer.group_send(
+                    f"{GROUP}_client_{client_id}",
+                    {"type": "position_update", "data": payload},
+                )
             # Évaluation géofences / vitesse -> AlertEvent + diffusion
             alerts = await self._evaluate_alerts(
                 imei,
@@ -129,6 +144,11 @@ class Command(BaseCommand):
                 await channel_layer.group_send(
                     "alerts", {"type": "alert_event", "data": alert}
                 )
+                if client_id:
+                    await channel_layer.group_send(
+                        f"alerts_client_{client_id}",
+                        {"type": "alert_event", "data": alert},
+                    )
 
     @sync_to_async
     def _evaluate_alerts(self, imei, lat, lon, speed):

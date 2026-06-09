@@ -3,14 +3,18 @@ import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 
+def _group_for(base: str, user) -> str:
+    """Groupe global pour le back-office, groupe par client sinon (cloisonnement)."""
+    client_id = getattr(user, "client_id", None)
+    return f"{base}_client_{client_id}" if client_id else base
+
+
 class LivePositionConsumer(AsyncWebsocketConsumer):
     """
     WebSocket carte temps réel.
-    Le client s'abonne aux positions ; le WS Bridge publie via le channel layer
-    (groupe `positions`) les positions reçues de Traccar.
+    - Back-office (sans client) : groupe global `positions` (toutes les balises).
+    - Client : groupe `positions_client_<id>` (uniquement ses balises).
     """
-
-    GROUP = "positions"
 
     async def connect(self):
         # Auth JWT via JWTAuthMiddleware (?token=). Rejet si non authentifié.
@@ -18,11 +22,13 @@ class LivePositionConsumer(AsyncWebsocketConsumer):
         if not user or not getattr(user, "is_authenticated", False):
             await self.close(code=4001)
             return
-        await self.channel_layer.group_add(self.GROUP, self.channel_name)
+        self.group = _group_for("positions", user)
+        await self.channel_layer.group_add(self.group, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.GROUP, self.channel_name)
+        if hasattr(self, "group"):
+            await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def position_update(self, event):
         """Handler appelé par group_send(type='position_update')."""
@@ -30,20 +36,20 @@ class LivePositionConsumer(AsyncWebsocketConsumer):
 
 
 class AlertConsumer(AsyncWebsocketConsumer):
-    """WebSocket des alertes (géofences, excès de vitesse)."""
-
-    GROUP = "alerts"
+    """WebSocket des alertes (géofences, excès de vitesse), cloisonné par client."""
 
     async def connect(self):
         user = self.scope.get("user")
         if not user or not getattr(user, "is_authenticated", False):
             await self.close(code=4001)
             return
-        await self.channel_layer.group_add(self.GROUP, self.channel_name)
+        self.group = _group_for("alerts", user)
+        await self.channel_layer.group_add(self.group, self.channel_name)
         await self.accept()
 
     async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.GROUP, self.channel_name)
+        if hasattr(self, "group"):
+            await self.channel_layer.group_discard(self.group, self.channel_name)
 
     async def alert_event(self, event):
         """Handler appelé par group_send(type='alert_event')."""
