@@ -45,8 +45,8 @@ export const billingApi = {
   transactions: () => apiClient.get("/billing/transactions/"),
   charges: () => apiClient.get("/billing/charges/"),
   invoices: () => apiClient.get("/billing/invoices/"),
-  // Initie un paiement pour une facture (provider = gobipay/fedapay/notchpay).
-  pay: (invoiceId: number, provider = "gobipay") =>
+  // Initie un paiement pour une facture (provider = fedapay/gobipay/notchpay).
+  pay: (invoiceId: number, provider = "fedapay") =>
     apiClient.post("/billing/pay/", { invoice: invoiceId, provider }),
 };
 

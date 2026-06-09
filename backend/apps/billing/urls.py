@@ -1,9 +1,14 @@
-from rest_framework import serializers, viewsets
+from django.urls import path
+from rest_framework import serializers, status, viewsets
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
+from rest_framework.views import APIView
 
 from apps.accounts.scoping import ClientScopedMixin
 
 from .models import Charge, Invoice, Subscription, Transaction
+from .payments import confirm_transaction, get_provider
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -63,10 +68,67 @@ class ChargeViewSet(viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
 
+class PayView(APIView):
+    """POST /billing/pay/ — initie un paiement pour une facture du client."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        invoice_id = request.data.get("invoice")
+        provider_name = request.data.get("provider", "sandbox")
+        invoice = Invoice.objects.filter(id=invoice_id).first()
+        if not invoice:
+            return Response({"detail": "Facture introuvable."}, status=404)
+        # Cloisonnement : un client ne paie que ses propres factures.
+        client_id = getattr(request.user, "client_id", None)
+        if client_id and invoice.client_id != client_id:
+            return Response({"detail": "Accès refusé."}, status=403)
+
+        tx = Transaction.objects.create(
+            client=invoice.client,
+            invoice=invoice,
+            provider=provider_name,
+            amount=invoice.amount,
+            currency=invoice.currency,
+            status=Transaction.Status.PENDING,
+        )
+        payment_url = get_provider(provider_name).initiate(tx)
+        return Response(
+            {"transaction_id": tx.id, "payment_url": payment_url, "status": tx.status},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class PaymentWebhookView(APIView):
+    """POST /billing/webhook/<provider>/ — callback agrégateur (public)."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request, provider):
+        external_id, result = get_provider(provider).verify_webhook(request.data)
+        if not external_id:
+            return Response({"detail": "Payload invalide."}, status=400)
+        tx = Transaction.objects.filter(external_id=external_id).first()
+        if not tx:
+            return Response({"detail": "Transaction inconnue."}, status=404)
+        tx.raw_response = dict(request.data)
+        tx.save(update_fields=["raw_response"])
+        confirm_transaction(tx, result)
+        return Response({"status": tx.status})
+
+
 router = DefaultRouter()
 router.register("billing/subscriptions", SubscriptionViewSet, basename="subscription")
 router.register("billing/invoices", InvoiceViewSet, basename="invoice")
 router.register("billing/transactions", TransactionViewSet, basename="transaction")
 router.register("billing/charges", ChargeViewSet, basename="charge")
 
-urlpatterns = router.urls
+urlpatterns = router.urls + [
+    path("billing/pay/", PayView.as_view(), name="billing_pay"),
+    path(
+        "billing/webhook/<str:provider>/",
+        PaymentWebhookView.as_view(),
+        name="billing_webhook",
+    ),
+]

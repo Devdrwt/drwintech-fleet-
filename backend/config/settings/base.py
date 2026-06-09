@@ -178,6 +178,15 @@ VAPID_PRIVATE_KEY_PATH = env(
 )
 VAPID_CONTACT_EMAIL = env("VAPID_CONTACT_EMAIL", default="admin@drwintech.com")
 
+# --- Paiement ---
+PAYMENT_RETURN_BASE = env("PAYMENT_RETURN_BASE", default="http://localhost:3000")
+GOBIPAY_API_KEY = env("GOBIPAY_API_KEY", default="")
+NOTCHPAY_API_KEY = env("NOTCHPAY_API_KEY", default="")
+# FedaPay (Mobile Money — sandbox/live)
+FEDAPAY_SECRET_KEY = env("FEDAPAY_SECRET_KEY", default="")
+FEDAPAY_PUBLIC_KEY = env("FEDAPAY_PUBLIC_KEY", default="")
+FEDAPAY_ENVIRONMENT = env("FEDAPAY_ENVIRONMENT", default="sandbox")
+
 # --- Métier ---
 DEFAULT_CURRENCY = env("DEFAULT_CURRENCY", default="XOF")
 PAYMENT_GRACE_DAYS = env.int("PAYMENT_GRACE_DAYS", default=7)

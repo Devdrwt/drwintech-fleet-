@@ -51,6 +51,13 @@ class Transaction(models.Model):
     client = models.ForeignKey(
         "crm.Client", on_delete=models.CASCADE, related_name="transactions"
     )
+    invoice = models.ForeignKey(
+        "billing.Invoice",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transactions",
+    )
     provider = models.CharField(max_length=20, choices=Provider.choices)
     external_id = models.CharField(max_length=120, blank=True)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
