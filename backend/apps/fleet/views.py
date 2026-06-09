@@ -7,6 +7,7 @@ from .serializers import (
     SimRechargeSerializer,
     VehicleSerializer,
 )
+from .services import deprovision_unit_on_traccar, provision_unit_on_traccar
 
 
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -18,8 +19,15 @@ class GpsUnitViewSet(viewsets.ModelViewSet):
     queryset = GpsUnit.objects.select_related("client", "vehicle").all()
     serializer_class = GpsUnitSerializer
 
-    # TODO Phase 2 : à la création, appeler integrations.traccar pour créer le
-    # device correspondant (uniqueId = imei) et stocker traccar_device_id.
+    def perform_create(self, serializer):
+        """À la création, provisionne le device sur le moteur Traccar."""
+        unit = serializer.save()
+        provision_unit_on_traccar(unit)
+
+    def perform_destroy(self, instance):
+        """Supprime aussi le device côté moteur (best-effort)."""
+        deprovision_unit_on_traccar(instance)
+        instance.delete()
 
 
 class SimCardViewSet(viewsets.ModelViewSet):
