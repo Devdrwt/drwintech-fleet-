@@ -106,7 +106,10 @@ class PaymentWebhookView(APIView):
     authentication_classes = []
 
     def post(self, request, provider):
-        external_id, result = get_provider(provider).verify_webhook(request.data)
+        prov = get_provider(provider)
+        if not prov.authenticate_webhook(request):
+            return Response({"detail": "Signature invalide."}, status=403)
+        external_id, result = prov.verify_webhook(request.data)
         if not external_id:
             return Response({"detail": "Payload invalide."}, status=400)
         tx = Transaction.objects.filter(external_id=external_id).first()

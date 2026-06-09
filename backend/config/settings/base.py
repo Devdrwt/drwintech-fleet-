@@ -186,6 +186,9 @@ NOTCHPAY_API_KEY = env("NOTCHPAY_API_KEY", default="")
 FEDAPAY_SECRET_KEY = env("FEDAPAY_SECRET_KEY", default="")
 FEDAPAY_PUBLIC_KEY = env("FEDAPAY_PUBLIC_KEY", default="")
 FEDAPAY_ENVIRONMENT = env("FEDAPAY_ENVIRONMENT", default="sandbox")
+# Secret de signature des webhooks (dashboard FedaPay). Si défini, la signature
+# X-FEDAPAY-SIGNATURE est vérifiée ; sinon on s'appuie sur la re-vérification API.
+FEDAPAY_WEBHOOK_SECRET = env("FEDAPAY_WEBHOOK_SECRET", default="")
 
 # --- Métier ---
 DEFAULT_CURRENCY = env("DEFAULT_CURRENCY", default="XOF")

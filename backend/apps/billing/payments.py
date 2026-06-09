@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 class BaseProvider:
     name = "sandbox"
 
+    def authenticate_webhook(self, request) -> bool:
+        """Authentifie l'appel webhook. Par défaut : accepté (le statut est de
+        toute façon re-vérifié à la source). Surchargé par les prestataires."""
+        return True
+
     def initiate(self, tx):
         """Crée la référence externe + l'URL de paiement. Retourne l'URL."""
         tx.external_id = f"{self.name.upper()}-{uuid.uuid4().hex[:12]}"
@@ -44,6 +49,27 @@ class FedapayProvider(BaseProvider):
     """Intégration FedaPay (Mobile Money). Repli sandbox interne si pas de clé."""
 
     name = "fedapay"
+
+    def authenticate_webhook(self, request) -> bool:
+        """Vérifie la signature HMAC FedaPay si un secret est configuré.
+        Format attendu : header `x-fedapay-signature` = "t=<ts>,s=<hmac>" avec
+        hmac = HMAC_SHA256(secret, f"{ts}.{raw_body}")."""
+        secret = settings.FEDAPAY_WEBHOOK_SECRET
+        if not secret:
+            return True  # pas de secret -> on s'appuie sur la re-vérification API
+        import hashlib
+        import hmac as hmac_mod
+
+        header = request.headers.get("X-FEDAPAY-SIGNATURE", "")
+        parts = dict(
+            p.split("=", 1) for p in header.split(",") if "=" in p
+        )
+        ts, sig = parts.get("t"), parts.get("s")
+        if not ts or not sig:
+            return False
+        signed = f"{ts}.{request.body.decode('utf-8')}".encode()
+        expected = hmac_mod.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+        return hmac_mod.compare_digest(expected, sig)
 
     def _base_url(self) -> str:
         env_ = (settings.FEDAPAY_ENVIRONMENT or "sandbox").lower()
