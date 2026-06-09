@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>
+<!--
+  Configuration Traccar — Drwintech Fleet (développement).
+  Traccar utilise sa propre base ; en dev on le branche sur le Postgres métier
+  (base séparée recommandée en prod). Adaptez l'URL/host à votre environnement.
+-->
+<properties>
+    <entry key='config.default'>./conf/default.xml</entry>
+
+    <!-- Base de données Traccar (séparée du métier en prod) -->
+    <entry key='database.driver'>org.postgresql.Driver</entry>
+    <entry key='database.url'>jdbc:postgresql://postgres:5432/fleet</entry>
+    <entry key='database.user'>fleet</entry>
+    <entry key='database.password'>fleet</entry>
+
+    <!-- API Web -->
+    <entry key='web.port'>8082</entry>
+
+    <!-- Active l'API REST (utilisée par le backend pour le provisioning/commandes) -->
+    <entry key='web.origin'>*</entry>
+</properties>

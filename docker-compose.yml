@@ -1,0 +1,65 @@
+# Drwintech Fleet — stack de développement
+# Lance : Traccar (moteur) + Postgres (métier) + TimescaleDB (télémétrie) + Redis
+# Le backend Django et le frontend Next.js peuvent tourner en local (npm/python) ou être ajoutés ici.
+
+services:
+  # --- Moteur d'ingestion télémétrique (boîte noire que nous possédons) ---
+  traccar:
+    image: traccar/traccar:latest
+    container_name: fleet-traccar
+    restart: unless-stopped
+    ports:
+      - "8082:8082"                       # UI/API Traccar (NE PAS exposer publiquement en prod)
+      - "5000-5150:5000-5150/tcp"         # ports devices TCP
+      - "5000-5150:5000-5150/udp"         # ports devices UDP
+    volumes:
+      - ./infra/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - traccar-logs:/opt/traccar/logs
+      - traccar-data:/opt/traccar/data
+    depends_on:
+      - postgres
+
+  # --- Base métier (clients, parc, paiements, maintenance…) ---
+  postgres:
+    image: postgres:16-alpine
+    container_name: fleet-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-fleet}
+      POSTGRES_USER: ${DB_USER:-fleet}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-fleet}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  # --- Base télémétrie (positions, trajets, événements) ---
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: fleet-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TSDB_NAME:-fleet_telemetry}
+      POSTGRES_USER: ${TSDB_USER:-fleet}
+      POSTGRES_PASSWORD: ${TSDB_PASSWORD:-fleet}
+    ports:
+      - "5433:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+
+  # --- Cache / broker Celery / pub-sub temps réel ---
+  redis:
+    image: redis:7-alpine
+    container_name: fleet-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  traccar-logs:
+  traccar-data:
+  postgres-data:
+  timescale-data:
+  redis-data:
