@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+interface LivePosition {
+  device_imei: string;
+  latitude: number;
+  longitude: number;
+  speed?: number;
+  fixTime?: string;
+}
 
 /**
  * Carte temps réel (MapLibre + OpenStreetMap — voir ADR 0004).
@@ -12,38 +20,75 @@ export function LiveMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markers = useRef<Record<string, maplibregl.Marker>>({});
+  const [connected, setConnected] = useState(false);
+  const [last, setLast] = useState<LivePosition | null>(null);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    mapRef.current = new maplibregl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
-      style: "https://demotiles.maplibre.org/style.json", // remplacer par tuiles dédiées/auto-hébergées
+      style: "https://demotiles.maplibre.org/style.json",
       center: [2.42, 6.37], // Cotonou / Porto-Novo
       zoom: 6,
     });
+    mapRef.current = map;
 
-    const wsUrl =
-      (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000") + "/ws/positions/";
-    const ws = new WebSocket(wsUrl);
+    const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+    const ws = new WebSocket(`${wsBase}/ws/positions/`);
+    ws.onopen = () => setConnected(true);
+    ws.onclose = () => setConnected(false);
     ws.onmessage = (event) => {
-      const pos = JSON.parse(event.data); // { device_imei, latitude, longitude }
+      let pos: LivePosition;
+      try {
+        pos = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (pos.latitude == null || pos.longitude == null) return;
       const id = pos.device_imei;
-      if (!mapRef.current) return;
       if (markers.current[id]) {
         markers.current[id].setLngLat([pos.longitude, pos.latitude]);
       } else {
         markers.current[id] = new maplibregl.Marker()
           .setLngLat([pos.longitude, pos.latitude])
-          .addTo(mapRef.current);
+          .addTo(map);
       }
+      map.easeTo({ center: [pos.longitude, pos.latitude], duration: 500 });
+      setLast(pos);
+      setCount((c) => c + 1);
     };
 
     return () => {
       ws.close();
-      mapRef.current?.remove();
+      map.remove();
     };
   }, []);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="absolute inset-0" />
+      <div className="absolute top-3 left-3 z-10 bg-white/90 rounded-lg shadow px-3 py-2 text-sm">
+        <div className="flex items-center gap-2">
+          <span
+            className={`inline-block w-2 h-2 rounded-full ${
+              connected ? "bg-green-500" : "bg-red-500"
+            }`}
+          />
+          <span className="font-medium">
+            {connected ? "Temps réel connecté" : "Déconnecté"}
+          </span>
+        </div>
+        <div className="text-gray-600 mt-1">Positions reçues : {count}</div>
+        {last && (
+          <div className="text-gray-600">
+            {last.device_imei} — {last.latitude.toFixed(4)},{" "}
+            {last.longitude.toFixed(4)}
+            {last.speed != null && ` — ${last.speed} km/h`}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
