@@ -29,7 +29,8 @@ services:
       POSTGRES_USER: ${DB_USER:-fleet}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-fleet}
     ports:
-      - "5432:5432"
+      # Hôte 5440 pour éviter un conflit avec un PostgreSQL déjà installé sur 5432.
+      - "5440:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -43,7 +44,8 @@ services:
       POSTGRES_USER: ${TSDB_USER:-fleet}
       POSTGRES_PASSWORD: ${TSDB_PASSWORD:-fleet}
     ports:
-      - "5433:5432"
+      # 5433 occupé par une autre stack → on expose sur 5434.
+      - "5434:5432"
     volumes:
       - timescale-data:/var/lib/postgresql/data
 
@@ -53,7 +55,8 @@ services:
     container_name: fleet-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      # 6379/6380 occupés par une autre stack → on expose sur 6381.
+      - "6381:6379"
     volumes:
       - redis-data:/data
 
