@@ -40,6 +40,7 @@ class Command(BaseCommand):
 
     async def _run(self):
         channel_layer = get_channel_layer()
+        self._alert_state = {}  # transitions zone/vitesse par device
         backoff = 1
         while True:
             try:
@@ -117,6 +118,23 @@ class Command(BaseCommand):
                     },
                 },
             )
+            # Évaluation géofences / vitesse -> AlertEvent + diffusion
+            alerts = await self._evaluate_alerts(
+                imei,
+                pos.get("latitude", 0),
+                pos.get("longitude", 0),
+                pos.get("speed", 0),
+            )
+            for alert in alerts:
+                await channel_layer.group_send(
+                    "alerts", {"type": "alert_event", "data": alert}
+                )
+
+    @sync_to_async
+    def _evaluate_alerts(self, imei, lat, lon, speed):
+        from apps.geofencing.services import evaluate_and_record
+
+        return evaluate_and_record(imei, lat, lon, speed, self._alert_state)
 
     @sync_to_async
     def _persist_position(self, imei: str, pos: dict):
