@@ -29,12 +29,20 @@ export const telemetryApi = {
     apiClient.get("/telemetry/positions/", { params: { imei } }),
   trips: (imei: string) =>
     apiClient.get("/telemetry/trips/", { params: { imei } }),
+  allTrips: () => apiClient.get("/telemetry/trips/"),
+};
+
+export const geofencingApi = {
+  alerts: () => apiClient.get("/geofencing/alerts/"),
 };
 
 export const billingApi = {
   transactions: () => apiClient.get("/billing/transactions/"),
   charges: () => apiClient.get("/billing/charges/"),
   invoices: () => apiClient.get("/billing/invoices/"),
+  // Initie un paiement pour une facture (provider = gobipay/fedapay/notchpay).
+  pay: (invoiceId: number, provider = "gobipay") =>
+    apiClient.post("/billing/pay/", { invoice: invoiceId, provider }),
 };
 
 export const maintenanceApi = {

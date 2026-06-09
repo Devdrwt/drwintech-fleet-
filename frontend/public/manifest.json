@@ -1,0 +1,18 @@
+{
+  "name": "Drwintech Fleet — Espace Client",
+  "short_name": "Fleet Client",
+  "description": "Suivi GPS, alertes et factures de votre flotte",
+  "start_url": "/client",
+  "scope": "/client",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
