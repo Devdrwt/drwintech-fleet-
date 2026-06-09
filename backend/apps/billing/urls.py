@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.urls import path
 from rest_framework import serializers, status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,6 +10,7 @@ from apps.accounts.scoping import ClientScopedMixin
 
 from .models import Charge, Invoice, Subscription, Transaction
 from .payments import confirm_transaction, get_provider
+from .pdf import render_invoice_pdf
 
 
 class SubscriptionSerializer(serializers.ModelSerializer):
@@ -66,6 +68,24 @@ class ChargeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+
+class InvoicePdfView(APIView):
+    """GET /billing/invoices/<id>/pdf/ — PDF de la facture (cloisonné client)."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        invoice = Invoice.objects.filter(id=pk).first()
+        if not invoice:
+            return Response({"detail": "Facture introuvable."}, status=404)
+        client_id = getattr(request.user, "client_id", None)
+        if client_id and invoice.client_id != client_id:
+            return Response({"detail": "Accès refusé."}, status=403)
+        pdf = render_invoice_pdf(invoice)
+        resp = HttpResponse(pdf, content_type="application/pdf")
+        resp["Content-Disposition"] = f'inline; filename="facture-{invoice.number}.pdf"'
+        return resp
 
 
 class PayView(APIView):
@@ -129,6 +149,11 @@ router.register("billing/charges", ChargeViewSet, basename="charge")
 
 urlpatterns = router.urls + [
     path("billing/pay/", PayView.as_view(), name="billing_pay"),
+    path(
+        "billing/invoices/<int:pk>/pdf/",
+        InvoicePdfView.as_view(),
+        name="invoice_pdf",
+    ),
     path(
         "billing/webhook/<str:provider>/",
         PaymentWebhookView.as_view(),

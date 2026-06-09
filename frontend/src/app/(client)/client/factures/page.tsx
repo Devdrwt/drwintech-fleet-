@@ -33,6 +33,17 @@ export default function FacturesPage() {
     }
   }
 
+  async function downloadPdf(id: number) {
+    try {
+      const { data } = await billingApi.invoicePdf(id);
+      const url = URL.createObjectURL(data as Blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      alert("PDF indisponible.");
+    }
+  }
+
   return (
     <div className="p-4 space-y-3">
       <h1 className="text-lg font-semibold text-gray-900">Factures</h1>
@@ -58,15 +69,23 @@ export default function FacturesPage() {
               >
                 {inv.status}
               </span>
-              {unpaid && (
+              <div className="flex gap-2">
                 <button
-                  onClick={() => pay(inv.id)}
-                  disabled={paying === inv.id}
-                  className="bg-primary text-white rounded-lg px-3 py-1 text-sm disabled:opacity-60"
+                  onClick={() => downloadPdf(inv.id)}
+                  className="border border-gray-300 text-gray-700 rounded-lg px-3 py-1 text-sm"
                 >
-                  {paying === inv.id ? "..." : "Payer"}
+                  PDF
                 </button>
-              )}
+                {unpaid && (
+                  <button
+                    onClick={() => pay(inv.id)}
+                    disabled={paying === inv.id}
+                    className="bg-primary text-white rounded-lg px-3 py-1 text-sm disabled:opacity-60"
+                  >
+                    {paying === inv.id ? "..." : "Payer"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         );

@@ -33,6 +33,25 @@ def test_pay_creates_pending_transaction(api, user_a, invoice_a):
 
 
 @pytest.mark.django_db
+def test_owner_can_download_invoice_pdf(api, user_a, invoice_a):
+    api.force_authenticate(user=user_a)
+    res = api.get(f"/api/v1/billing/invoices/{invoice_a.id}/pdf/")
+    assert res.status_code == 200
+    assert res["Content-Type"] == "application/pdf"
+    assert res.content[:4] == b"%PDF"
+
+
+@pytest.mark.django_db
+def test_cannot_download_other_client_pdf(api, user_a, client_b):
+    other = Invoice.objects.create(
+        client=client_b, number="FA-B-PDF", amount=Decimal("1000"), status="issued"
+    )
+    api.force_authenticate(user=user_a)
+    res = api.get(f"/api/v1/billing/invoices/{other.id}/pdf/")
+    assert res.status_code == 403
+
+
+@pytest.mark.django_db
 def test_cannot_pay_other_client_invoice(api, user_a, client_b):
     other = Invoice.objects.create(
         client=client_b, number="FA-B-1", amount=Decimal("1000"), status="issued"

@@ -45,6 +45,8 @@ export const billingApi = {
   transactions: () => apiClient.get("/billing/transactions/"),
   charges: () => apiClient.get("/billing/charges/"),
   invoices: () => apiClient.get("/billing/invoices/"),
+  invoicePdf: (id: number) =>
+    apiClient.get(`/billing/invoices/${id}/pdf/`, { responseType: "blob" }),
   // Initie un paiement pour une facture (provider = fedapay/gobipay/notchpay).
   pay: (invoiceId: number, provider = "fedapay") =>
     apiClient.post("/billing/pay/", { invoice: invoiceId, provider }),
