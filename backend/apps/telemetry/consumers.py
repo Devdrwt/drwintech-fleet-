@@ -13,7 +13,11 @@ class LivePositionConsumer(AsyncWebsocketConsumer):
     GROUP = "positions"
 
     async def connect(self):
-        # TODO Phase 2 : authentifier le token JWT depuis la query string.
+        # Auth JWT via JWTAuthMiddleware (?token=). Rejet si non authentifié.
+        user = self.scope.get("user")
+        if not user or not getattr(user, "is_authenticated", False):
+            await self.close(code=4001)
+            return
         await self.channel_layer.group_add(self.GROUP, self.channel_name)
         await self.accept()
 

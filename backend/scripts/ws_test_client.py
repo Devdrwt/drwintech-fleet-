@@ -11,17 +11,23 @@ import sys
 from websockets.asyncio.client import connect
 
 
-async def main(timeout: float):
+async def main(timeout: float, token: str | None):
     url = "ws://localhost:8000/ws/positions/"
-    async with connect(url) as ws:
-        print(f"Connecté à {url} — attente d'une position ({timeout}s)...")
-        try:
-            msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
-            print("POSITION REÇUE:", msg)
-        except asyncio.TimeoutError:
-            print("Aucune position reçue dans le délai.")
+    if token:
+        url += f"?token={token}"
+    try:
+        async with connect(url) as ws:
+            print(f"Connecté — attente d'une position ({timeout}s)...")
+            try:
+                msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
+                print("POSITION REÇUE:", msg)
+            except asyncio.TimeoutError:
+                print("Connecté mais aucune position reçue dans le délai.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"CONNEXION REJETÉE: {type(exc).__name__}: {exc}")
 
 
 if __name__ == "__main__":
     secs = float(sys.argv[1]) if len(sys.argv) > 1 else 20
-    asyncio.run(main(secs))
+    tok = sys.argv[2] if len(sys.argv) > 2 else None
+    asyncio.run(main(secs, tok))

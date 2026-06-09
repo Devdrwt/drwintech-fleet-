@@ -36,7 +36,11 @@ export function LiveMap() {
     mapRef.current = map;
 
     const wsBase = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
-    const ws = new WebSocket(`${wsBase}/ws/positions/`);
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const ws = new WebSocket(
+      `${wsBase}/ws/positions/${token ? `?token=${token}` : ""}`
+    );
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
     ws.onmessage = (event) => {

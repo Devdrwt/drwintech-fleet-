@@ -47,8 +47,13 @@ class Command(BaseCommand):
                 device_map = await self._load_device_map()
                 ws_url = settings.TRACCAR_WS_URL
                 self.stdout.write(self.style.SUCCESS(f"Connexion WS Traccar : {ws_url}"))
+                # ping_interval=None : Traccar ne répond pas aux pings WS standard,
+                # ce qui provoquait de faux timeouts (1011) et des reconnexions en
+                # boucle faisant perdre des positions. On s'appuie sur le flux/TCP.
                 async with ws_connect(
-                    ws_url, additional_headers={"Cookie": cookie}
+                    ws_url,
+                    additional_headers={"Cookie": cookie},
+                    ping_interval=None,
                 ) as ws:
                     backoff = 1
                     async for raw in ws:
