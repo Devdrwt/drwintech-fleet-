@@ -17,6 +17,7 @@ daphne==4.1.*
 
 # --- HTTP / intégrations ---
 httpx==0.27.*
+websockets==13.*
 
 # --- Sécurité ---
 django-ratelimit==4.1.*
