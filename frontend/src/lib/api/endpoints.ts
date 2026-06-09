@@ -36,6 +36,11 @@ export const geofencingApi = {
   alerts: () => apiClient.get("/geofencing/alerts/"),
 };
 
+export const pushApi = {
+  vapidKey: () => apiClient.get("/push/vapid-public-key/"),
+  subscribe: (sub: unknown) => apiClient.post("/push/subscribe/", sub),
+};
+
 export const billingApi = {
   transactions: () => apiClient.get("/billing/transactions/"),
   charges: () => apiClient.get("/billing/charges/"),

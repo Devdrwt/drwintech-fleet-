@@ -171,6 +171,13 @@ TRACCAR_WS_URL = env("TRACCAR_WS_URL", default="ws://localhost:8082/api/socket")
 TRACCAR_SERVICE_USER = env("TRACCAR_SERVICE_USER", default="")
 TRACCAR_SERVICE_PASSWORD = env("TRACCAR_SERVICE_PASSWORD", default="")
 
+# --- Web Push (VAPID) ---
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY_PATH = env(
+    "VAPID_PRIVATE_KEY_PATH", default=str(BASE_DIR / "infra" / "vapid_private.pem")
+)
+VAPID_CONTACT_EMAIL = env("VAPID_CONTACT_EMAIL", default="admin@drwintech.com")
+
 # --- Métier ---
 DEFAULT_CURRENCY = env("DEFAULT_CURRENCY", default="XOF")
 PAYMENT_GRACE_DAYS = env.int("PAYMENT_GRACE_DAYS", default=7)

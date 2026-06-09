@@ -149,12 +149,22 @@ class Command(BaseCommand):
                         f"alerts_client_{client_id}",
                         {"type": "alert_event", "data": alert},
                     )
+                    await self._push_alert(client_id, alert)
 
     @sync_to_async
     def _evaluate_alerts(self, imei, lat, lon, speed):
         from apps.geofencing.services import evaluate_and_record
 
         return evaluate_and_record(imei, lat, lon, speed, self._alert_state)
+
+    @sync_to_async
+    def _push_alert(self, client_id, alert):
+        from apps.notifications.tasks import push_alert_to_client
+
+        try:
+            push_alert_to_client(client_id, alert)  # appel direct (best-effort)
+        except Exception:  # noqa: BLE001 — le push ne doit pas casser l'ingestion
+            pass
 
     @sync_to_async
     def _persist_position(self, imei: str, pos: dict):

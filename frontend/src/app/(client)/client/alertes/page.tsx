@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { geofencingApi } from "@/lib/api/endpoints";
+import { enablePush } from "@/lib/push";
 
 interface Alert {
   id?: number;
@@ -26,6 +27,7 @@ export default function AlertesPage() {
     queryFn: () => geofencingApi.alerts().then((r) => r.data),
   });
   const [live, setLive] = useState<Alert[]>([]);
+  const [pushMsg, setPushMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const base = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
@@ -47,7 +49,16 @@ export default function AlertesPage() {
 
   return (
     <div className="p-4 space-y-3">
-      <h1 className="text-lg font-semibold text-gray-900">Alertes</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">Alertes</h1>
+        <button
+          onClick={async () => setPushMsg(await enablePush())}
+          className="text-xs bg-primary text-white rounded-lg px-3 py-1.5"
+        >
+          Activer les notifications
+        </button>
+      </div>
+      {pushMsg && <p className="text-xs text-gray-500">{pushMsg}</p>}
       {all.length === 0 && (
         <p className="text-gray-400 text-sm">Aucune alerte.</p>
       )}

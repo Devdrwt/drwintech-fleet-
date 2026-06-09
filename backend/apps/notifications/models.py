@@ -9,6 +9,24 @@ class NotificationTemplate(models.Model):
     locale = models.CharField(max_length=5, default="fr")
 
 
+class PushSubscription(models.Model):
+    """Abonnement Web Push d'un utilisateur (un par appareil/navigateur)."""
+
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="push_subscriptions"
+    )
+    endpoint = models.URLField(max_length=600, unique=True)
+    p256dh = models.CharField(max_length=200)
+    auth = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def as_subscription_info(self) -> dict:
+        return {
+            "endpoint": self.endpoint,
+            "keys": {"p256dh": self.p256dh, "auth": self.auth},
+        }
+
+
 class NotificationLog(models.Model):
     class Channel(models.TextChoices):
         EMAIL = "email", "Email"
