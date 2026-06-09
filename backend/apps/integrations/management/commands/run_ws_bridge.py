@@ -19,7 +19,7 @@ import asyncio
 import json
 
 import httpx
-import websockets
+from websockets.asyncio.client import connect as ws_connect
 from asgiref.sync import sync_to_async
 from channels.layers import get_channel_layer
 from django.conf import settings
@@ -47,7 +47,7 @@ class Command(BaseCommand):
                 device_map = await self._load_device_map()
                 ws_url = settings.TRACCAR_WS_URL
                 self.stdout.write(self.style.SUCCESS(f"Connexion WS Traccar : {ws_url}"))
-                async with websockets.connect(
+                async with ws_connect(
                     ws_url, additional_headers={"Cookie": cookie}
                 ) as ws:
                     backoff = 1
