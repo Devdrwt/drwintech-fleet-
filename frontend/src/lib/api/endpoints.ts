@@ -19,6 +19,7 @@ export const fleetApi = {
   units: (params?: Record<string, unknown>) =>
     apiClient.get("/fleet/units/", { params }),
   unit: (id: number) => apiClient.get(`/fleet/units/${id}/`),
+  createUnit: (payload: unknown) => apiClient.post("/fleet/units/", payload),
   simCards: () => apiClient.get("/fleet/sim-cards/"),
   recharges: () => apiClient.get("/fleet/recharges/"),
 };
