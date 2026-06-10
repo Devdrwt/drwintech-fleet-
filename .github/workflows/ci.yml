@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging, dev]
+  pull_request:
+    branches: [main, staging, dev]
+
+jobs:
+  backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    services:
+      # TimescaleDB sert les deux bases de test (default + telemetry).
+      timescaledb:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: fleet
+          POSTGRES_PASSWORD: fleet
+          POSTGRES_DB: fleet
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fleet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      SECRET_KEY: ci-insecure-secret
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: fleet
+      DB_USER: fleet
+      DB_PASSWORD: fleet
+      # La base télémétrie pointe sur le même service (nom de base distinct).
+      TSDB_HOST: localhost
+      TSDB_PORT: "5432"
+      TSDB_NAME: fleet_telemetry
+      TSDB_USER: fleet
+      TSDB_PASSWORD: fleet
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_BROKER_URL: redis://localhost:6379/1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run tests
+        working-directory: backend
+        run: pytest -q
+
+  frontend:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build
+        working-directory: frontend
+        run: npm run build

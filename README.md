@@ -83,6 +83,24 @@ npm run dev                 # http://localhost:3000
 Voir [docs/PLAN.md](docs/PLAN.md). Cible : **V1 indépendante en ~4–6 mois**.
 La Phase 1 (ingestion propre avec de vrais boîtiers) attaque le risque principal en premier.
 
+## 🔁 Intégration continue (CI)
+
+Workflow GitHub Actions : [.github/workflows/ci.yml](.github/workflows/ci.yml).
+À chaque push / PR sur `dev`, `staging`, `main` :
+- **Backend** : `pytest` (services TimescaleDB + Redis provisionnés par la CI).
+- **Frontend** : `npm ci` + `next build`.
+
+**Flux de branches** : `dev` → `staging` → `main` (mêmes conventions que les dépôts SPF).
+
+**Activation** (le dépôt est local pour l'instant) :
+```bash
+# 1. Créer le dépôt sur GitHub (ex. github.com/<org>/drwintech-fleet)
+# 2. Lier et pousser les branches
+git remote add origin git@github.com:<org>/drwintech-fleet.git
+git push -u origin main staging dev
+```
+La CI se déclenche automatiquement dès le premier push.
+
 ## 📄 Licence
 
 Propriétaire — Drwintech. Composant Traccar sous Apache 2.0 (auto-hébergé).
