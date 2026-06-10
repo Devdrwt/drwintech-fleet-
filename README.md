@@ -22,6 +22,7 @@ télémétrie **remplaçable**. Toute la valeur métier vit dans notre code.
 
 | Doc | Contenu |
 |---|---|
+| [docs/GUIDE-DEVELOPPEUR.md](docs/GUIDE-DEVELOPPEUR.md) | Guide développeur : installation, lancement, tests, flux Git, conventions |
 | [docs/PLAN.md](docs/PLAN.md) | Plan directeur, périmètre, feuille de route par phases |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Architecture détaillée, flux de données |
 | [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | Modèle de données (métier + télémétrie) |
