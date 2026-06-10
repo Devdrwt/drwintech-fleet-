@@ -3,14 +3,24 @@ from django.db import models
 
 
 class Subscription(models.Model):
+    class Period(models.TextChoices):
+        MONTHLY = "monthly", "Mensuel"
+        QUARTERLY = "quarterly", "Trimestriel"
+        ANNUAL = "annual", "Annuel"
+
     client = models.ForeignKey(
         "crm.Client", on_delete=models.CASCADE, related_name="subscriptions"
     )
     plan = models.CharField(max_length=100)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=3, default="XOF")
+    period = models.CharField(
+        max_length=12, choices=Period.choices, default=Period.MONTHLY
+    )
     start_date = models.DateField()
     end_date = models.DateField(null=True, blank=True)
+    # Date de la prochaine facture à émettre (null = pas de facturation auto).
+    next_invoice_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
 

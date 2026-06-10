@@ -151,6 +151,28 @@ CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = env("REDIS_URL", default="redis://localhost:6379/0")
 CELERY_TASK_SERIALIZER = "json"
 
+# Planification (facturation récurrente). Nécessite `celery -A config beat`.
+from celery.schedules import crontab  # noqa: E402
+
+CELERY_BEAT_SCHEDULE = {
+    "generate-due-invoices": {
+        "task": "apps.billing.tasks.generate_due_invoices",
+        "schedule": crontab(hour=2, minute=0),  # tous les jours à 02:00
+    },
+    "mark-overdue-invoices": {
+        "task": "apps.billing.tasks.mark_overdue_invoices",
+        "schedule": crontab(hour=2, minute=15),
+    },
+    "send-invoice-reminders": {
+        "task": "apps.billing.tasks.send_invoice_reminders",
+        "schedule": crontab(hour=8, minute=0),  # rappels le matin
+    },
+    "suspend-overdue-clients": {
+        "task": "apps.billing.tasks.suspend_overdue_clients",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
+
 # --- Channels (temps réel) ---
 CHANNEL_LAYERS = {
     "default": {
