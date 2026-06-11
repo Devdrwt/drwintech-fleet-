@@ -64,8 +64,9 @@ python manage.py runserver 8000
 # API docs : http://localhost:8000/api/docs/
 ```
 
-> ⚠️ Étape Phase 1 : transformer `telemetry.Position` en hypertable Timescale
-> (migration SQL `SELECT create_hypertable('telemetry_position', 'time')`).
+> ℹ️ La conversion de `telemetry.Position` en **hypertable Timescale** (+ compression et
+> rétention RGPD 12 mois) est faite automatiquement par la migration
+> `telemetry/0002_position_hypertable` lors du `migrate --database=telemetry`.
 
 ### 3. Frontend
 ```bash

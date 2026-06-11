@@ -66,8 +66,9 @@ python manage.py runserver 8000
 - API : http://localhost:8000/api/v1/
 - Doc OpenAPI (drf-spectacular) : http://localhost:8000/api/docs/
 
-> ⚠️ Phase 1 : transformer `telemetry.Position` en hypertable Timescale via une migration SQL
-> (`SELECT create_hypertable('telemetry_position', 'time')`). Voir
+> ℹ️ La migration `telemetry/0002_position_hypertable` convertit `telemetry_position` en
+> hypertable Timescale (compression des chunks > 7 j, rétention RGPD 12 mois) — appliquée
+> automatiquement par `migrate --database=telemetry`. Voir
 > [adr/0003-timescaledb-for-telemetry.md](adr/0003-timescaledb-for-telemetry.md).
 
 ### 2.4 Frontend (Next.js 14)
