@@ -1,0 +1,172 @@
+# ============================================================
+# Drwintech Fleet — Production (VPS partagé).
+# Aucun reverse proxy ici : le nginx du VPS proxie
+#   fleet.drwintech.com      -> 127.0.0.1:${WEB_HOST_PORT}    (frontend)
+#   api-fleet.drwintech.com  -> 127.0.0.1:${API_HOST_PORT}    (backend, HTTP+WS)
+# Images construites par la CI et publiées sur GHCR (voir .github/workflows/deploy.yml).
+# Lancer : docker compose -f docker-compose.prod.yml --env-file .env up -d
+# mem_limit : le VPS est partagé et la RAM limitée — on borne chaque service.
+# ============================================================
+name: drwintech-fleet
+
+services:
+  # --- Base métier (clients, parc, paiements, maintenance…) ---
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 256m
+    networks: [fleet]
+
+  # --- Base télémétrie (positions, trajets, événements) : hypertable Timescale ---
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TSDB_NAME}
+      POSTGRES_USER: ${TSDB_USER}
+      POSTGRES_PASSWORD: ${TSDB_PASSWORD}
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TSDB_USER} -d ${TSDB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    mem_limit: 512m
+    networks: [fleet]
+
+  # --- Cache / broker Celery / pub-sub temps réel ---
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    mem_limit: 128m
+    networks: [fleet]
+
+  # --- Moteur d'ingestion télémétrique (Traccar) ---
+  # UI/API NON exposée publiquement (accès interne via le réseau docker — ADR 0001).
+  # Seuls les ports protocole des boîtiers utilisés sont publiés.
+  traccar:
+    image: traccar/traccar:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5023:5023/tcp"   # Concox / GT06
+      - "5027:5027/tcp"   # Teltonika
+      - "5028:5028/tcp"   # Queclink
+    volumes:
+      - ./infra/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - traccar-logs:/opt/traccar/logs
+      - traccar-data:/opt/traccar/data
+    mem_limit: 1g
+    networks: [fleet]
+
+  # --- API Django/DRF (HTTP + WebSocket via daphne) ---
+  api:
+    image: ${BACKEND_IMAGE:-ghcr.io/devdrwt/fleet_back:latest}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUN_MIGRATIONS: "1"   # migre les 2 bases + collectstatic au démarrage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - static-data:/app/staticfiles
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8012}:8000"
+    mem_limit: 512m
+    networks: [fleet]
+
+  # --- Worker Celery (jobs async : positions batch, notifications, webhooks) ---
+  celery-worker:
+    image: ${BACKEND_IMAGE:-ghcr.io/devdrwt/fleet_back:latest}
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "worker", "-l", "info", "--concurrency=2"]
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    mem_limit: 384m
+    networks: [fleet]
+
+  # --- Celery beat (facturation récurrente, rappels, suspension impayés) ---
+  celery-beat:
+    image: ${BACKEND_IMAGE:-ghcr.io/devdrwt/fleet_back:latest}
+    restart: unless-stopped
+    command: ["celery", "-A", "config", "beat", "-l", "info"]
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    mem_limit: 192m
+    networks: [fleet]
+
+  # --- Pont WebSocket Traccar -> Redis pub/sub (positions temps réel) ---
+  ws-bridge:
+    image: ${BACKEND_IMAGE:-ghcr.io/devdrwt/fleet_back:latest}
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_ws_bridge"]
+    env_file: .env
+    depends_on:
+      api:
+        condition: service_started
+      traccar:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    mem_limit: 192m
+    networks: [fleet]
+
+  # --- Frontend Next.js 14 ---
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/devdrwt/fleet_front:latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3001}:3000"
+    mem_limit: 256m
+    networks: [fleet]
+
+volumes:
+  postgres-data:
+  timescale-data:
+  redis-data:
+  traccar-logs:
+  traccar-data:
+  static-data:
+
+networks:
+  fleet:

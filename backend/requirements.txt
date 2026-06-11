@@ -29,6 +29,9 @@ argon2-cffi==23.1.*
 # --- Config ---
 django-environ==0.11.*
 
+# --- Prod : statics servis par l'app ---
+whitenoise==6.7.*
+
 # --- Export ---
 reportlab==4.2.*
 openpyxl==3.1.*

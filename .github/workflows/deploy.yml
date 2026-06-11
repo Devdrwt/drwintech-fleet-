@@ -1,0 +1,73 @@
+name: Deploy
+
+# Build + push des images sur GHCR (runner GitHub-hosted), puis déploiement sur
+# le VPS via un runner self-hosted. Déclenché sur main uniquement.
+#
+# ⚠️ Le job `deploy` exige un runner self-hosted ENREGISTRÉ pour ce dépôt
+#    (label `fleet-vps`). Tant qu'il n'existe pas, lancer le déploiement à la main
+#    sur le VPS (voir docs/DEPLOIEMENT.md). Le job `build` ne dépend pas du VPS.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - image: ghcr.io/devdrwt/fleet_back
+            context: ./backend
+            build_args: ""
+          - image: ghcr.io/devdrwt/fleet_front
+            context: ./frontend
+            build_args: |
+              NEXT_PUBLIC_API_URL=https://api-fleet.drwintech.com/api/v1
+              NEXT_PUBLIC_DEFAULT_LOCALE=fr
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ matrix.image }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          build-args: ${{ matrix.build_args }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    # Runner auto-hébergé SUR le VPS (à enregistrer pour ce dépôt, label `fleet-vps`)
+    # → déploiement local, sans SSH entrant.
+    runs-on: [self-hosted, fleet-vps]
+    steps:
+      - name: Deploy on VPS (local)
+        run: |
+          set -e
+          cd /opt/drwintech-fleet
+          git pull --ff-only
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml up -d
+          docker image prune -f

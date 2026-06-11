@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone", // serveur Node autonome → image Docker légère
   async rewrites() {
     return [
       {

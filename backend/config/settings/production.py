@@ -1,7 +1,25 @@
 """Configuration de production — durcie (voir SECURITY.md)."""
 from .base import *  # noqa: F401,F403
+from .base import MIDDLEWARE, env
 
 DEBUG = False
+
+# Origines de confiance CSRF (admin Django derrière HTTPS sur sous-domaine).
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+
+# WhiteNoise : sert les fichiers statiques (collectstatic) sans serveur dédié.
+# Inséré juste après le SecurityMiddleware (recommandation WhiteNoise).
+MIDDLEWARE = (
+    MIDDLEWARE[:1]
+    + ["whitenoise.middleware.WhiteNoiseMiddleware"]
+    + MIDDLEWARE[1:]
+)
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    },
+}
 
 # Sécurité transport
 SECURE_SSL_REDIRECT = True
