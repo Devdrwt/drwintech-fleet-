@@ -1,0 +1,5 @@
+# Fins de ligne LF garanties pour les fichiers exécutés sous Linux (images Docker).
+*.sh            text eol=lf
+docker-entrypoint.sh text eol=lf
+Dockerfile      text eol=lf
+*.Dockerfile    text eol=lf
