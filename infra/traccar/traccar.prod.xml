@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>
+<!--
+  Configuration Traccar — PRODUCTION.
+  Base de données EMBARQUÉE H2 (jdbc:h2:./data/database via default.xml), isolée du
+  métier et persistée sur le volume `traccar-data`. Pas de couplage au Postgres métier
+  (cf. recommandation « base séparée en prod »). L'API REST sert au provisioning/commandes.
+-->
+<properties>
+    <entry key='config.default'>./conf/default.xml</entry>
+
+    <!-- API Web (interne uniquement — non exposée par nginx). -->
+    <entry key='web.port'>8082</entry>
+    <entry key='web.origin'>*</entry>
+</properties>

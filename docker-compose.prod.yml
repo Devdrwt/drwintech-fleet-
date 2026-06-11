@@ -77,7 +77,7 @@ services:
       - "5027:5027/tcp"   # Teltonika
       - "5028:5028/tcp"   # Queclink
     volumes:
-      - ./infra/traccar/traccar.xml:/opt/traccar/conf/traccar.xml:ro
+      - ./infra/traccar/traccar.prod.xml:/opt/traccar/conf/traccar.xml:ro
       - traccar-logs:/opt/traccar/logs
       - traccar-data:/opt/traccar/data
     mem_limit: 1g
