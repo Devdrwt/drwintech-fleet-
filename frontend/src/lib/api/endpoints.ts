@@ -58,6 +58,8 @@ export const maintenanceApi = {
 
 export const reportingApi = {
   dashboard: () => apiClient.get("/reporting/dashboard/"),
+  revenue: (months = 12) =>
+    apiClient.get("/reporting/revenue/", { params: { months } }),
 };
 
 export const integrationsApi = {

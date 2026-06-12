@@ -3,5 +3,59 @@
 @tailwind utilities;
 
 :root {
-  --primary: #4f46e5;
+  --primary: #6366f1;
+  --background: #f7f8fc;
+  --foreground: #0f1222;
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    @apply bg-brand-500/20 text-brand-700;
+  }
+}
+
+@layer utilities {
+  /* Carte verre dépoli */
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/60;
+  }
+  .glass-dark {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  /* Texte en dégradé animé */
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-600 via-violet-500 to-brand-400 bg-clip-text text-transparent;
+  }
+  /* Motif de grille en fond */
+  .bg-grid {
+    background-size: 40px 40px;
+    @apply bg-grid-light;
+  }
+  /* Masque radial (atténue les bords) */
+  .mask-radial {
+    -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
+    mask-image: radial-gradient(ellipse at center, black 40%, transparent 75%);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Respect des préférences de mouvement réduit */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
